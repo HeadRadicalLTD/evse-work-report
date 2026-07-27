@@ -1,0 +1,17 @@
+# Local runtime and cache
+.codex-browser-profile/
+node_modules/
+__pycache__/
+*.pyc
+
+# Temporary analysis and generated working folders
+outputs/
+work_delete5/
+work_rank2/
+
+# Local rollback copies
+통합업무기록/backup/
+
+# Raw measurement data and spreadsheet outputs
+*.xlsx
+
