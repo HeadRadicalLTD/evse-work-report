@@ -39,7 +39,79 @@
   <div class='issue-top'><span class='issue-no'>ISSUE 01</span><span class='issue-dates'><b>발생</b> 07.10<i>→</i><b>개선</b> 07.14</span><span class='done'>완료</span></div>
   <h3>MXO 5 얼라이먼트 실행 오류</h3>
   <div class='issue-row problem-row'><span>문제</span><p>채널(C1~C8)에 프로브가 꽂힌 상태에서 Alignment를 실행하면 Id: 1408 오류가 발생.</p></div>
-  <div class='issue-row action-row'><span>개선</span><p>모든 채널의 프로브를 제거한 뒤 Alignment를 다시 실행하…1785 tokens truncated…
+  <div class='issue-row action-row'><span>개선</span><p>모든 채널의 프로브를 제거한 뒤 Alignment를 다시 실행하여 통과.</p></div>
+</article><article class='issue-card' id='issue-02'>
+  <button class='back-calendar' type='button'>← 달력으로 돌아가기</button>
+  <div class='issue-top'><span class='issue-no'>ISSUE 02</span><span class='issue-dates'><b>발생</b> 07.14<i>→</i><b>개선</b> 07.14</span><span class='done'>완료</span></div>
+  <h3>전압 프로브(RT-ZHD16) 영점 오차</h3>
+  <div class='issue-row problem-row'><span>문제</span><p>전압 파형이 0V 기준선에 정렬되지 않아 측정 기준점이 흔들림.</p></div>
+  <div class='issue-row action-row'><span>개선</span><p>신호 핀과 접지 집게를 직접 쇼트한 뒤 AutoZero를 수행하여 영점 보정.</p></div>
+</article><article class='issue-card' id='issue-03'>
+  <button class='back-calendar' type='button'>← 달력으로 돌아가기</button>
+  <div class='issue-top'><span class='issue-no'>ISSUE 03</span><span class='issue-dates'><b>발생</b> 07.15<i>→</i><b>개선</b> 07.15</span><span class='done'>완료</span></div>
+  <h3>LMG600 단위 표시 오류</h3>
+  <div class='issue-row problem-row'><span>문제</span><p>노이즈를 주파수로 인식하거나 전압 범위를 너무 낮게 잡아 mV·kHz로 표시.</p></div>
+  <div class='issue-row action-row'><span>개선</span><p>Bandwidth를 Fund. (f1)로, Range를 250V로 고정해 표시 기준을 정상화.</p></div>
+</article><article class='issue-card' id='issue-04'>
+  <button class='back-calendar' type='button'>← 달력으로 돌아가기</button>
+  <div class='issue-top'><span class='issue-no'>ISSUE 04</span><span class='issue-dates'><b>발생</b> 07.15<i>→</i><b>개선</b> 07.15</span><span class='done'>완료</span></div>
+  <h3>LMG600 전압 범위 선택 제한</h3>
+  <div class='issue-row problem-row'><span>문제</span><p>Jack 설정이 Usensor여서 안전 제한으로 4V 이상 범위를 선택할 수 없었음.</p></div>
+  <div class='issue-row action-row'><span>개선</span><p>노란색 잭 전용 U* 모드로 변경해 250V 범위를 활성화.</p></div>
+</article><article class='issue-card' id='issue-05'>
+  <button class='back-calendar' type='button'>← 달력으로 돌아가기</button>
+  <div class='issue-top'><span class='issue-no'>ISSUE 05</span><span class='issue-dates'><b>발생</b> 07.21<i>→</i><b>개선</b> 07.21</span><span class='done'>완료</span></div>
+  <h3>측정 지그 인출부 우천 방수 우려</h3>
+  <div class='issue-row problem-row'><span>문제</span><p>CP/PP 신호선 인출 틈새로 빗물이 들어갈 가능성이 확인됨.</p></div>
+  <div class='issue-row action-row'><span>개선</span><p>자기 융착 테이프로 인출부를 밀봉하고 워터 루프를 만들어 빗물 유입 경로를 차단.</p></div>
+</article><article class='issue-card' id='issue-06'>
+  <button class='back-calendar' type='button'>← 달력으로 돌아가기</button>
+  <div class='issue-top'><span class='issue-no'>ISSUE 06</span><span class='issue-dates'><b>발생</b> 07.22<i>→</i><b>개선</b> 07.22</span><span class='done'>완료</span></div>
+  <h3>장비별 연결 프로브·클램프 식별 혼선</h3>
+  <div class='issue-row problem-row'><span>문제</span><p>오실로스코프와 파워 어널라이저에 연결하는 프로브·클램프의 수량과 용도가 혼동됨.</p></div>
+  <div class='issue-row action-row'><span>개선</span><p>오실로스코프 1개(RT-ZHD16), 파워 어널라이저 2개(전압 리드선·전류 클램프)로 결선 구성을 재확인.</p></div>
+</article></div></div>
+  <div class='tab-panel' id='history' role='tabpanel'>
+<div class='history'>
+  <article class='history-card'>
+    <div class='version'>MapWebApp 3.0 <span>7/7</span></div>
+    <h3>현장 상태와 계측 불가 사유 표시를 개선</h3>
+    <ul>
+      <li>3kW급, 11/14kW급, 방문 완료 상태의 색상이 서로 비슷해 현장에서 구분하기 어려운 문제를 해소.</li>
+      <li>지도 마커와 범례의 색상 체계를 분리해 충전용량과 방문 상태를 바로 읽을 수 있도록 변경.</li>
+      <li>계측 불가 사유를 하나만 남길 수 있던 구조를 복수 선택 방식으로 변경.</li>
+      <li>출입 불가, 선 없음, 고장, kW 변경, 불법주차, 충전 오류 등 복합 사유를 동시에 기록할 수 있도록 정비.</li>
+      <li>선택된 계측 불가 사유와 방문 완료 행의 표시 색상을 맞춰, 지도·현황판·저장 상태가 같은 결과를 보도록 개선.</li>
+    </ul>
+  </article>
+  <article class='history-card'>
+    <div class='version'>MapWebApp 4.0 <span>7/10</span></div>
+    <h3>최신 목록을 기준으로 지도 데이터 구조를 정비</h3>
+    <ul>
+      <li>MapWebApp의 충전소 데이터가 최신 <code>Total_list</code>의 번호·우선순위 정보와 같은 기준을 사용하도록 정리.</li>
+      <li>앱 기능의 고유 식별자는 <code>id</code>로 통일하고, <code>candidate_id</code>는 지도·검색·필터·CSV 매칭 기준에서 제외.</li>
+      <li>방문기록 CSV는 일련번호와 <code>id</code>를 매칭 기준으로 사용하도록 고정해 동일 충전소를 안정적으로 찾게 함.</li>
+      <li>지역별로 번호를 수시로 다시 매기지 않고, 전체 현장 출장 종료 뒤 최종 리넘버링을 적용하는 기준을 정리.</li>
+      <li>신버전 목록·지도·측정자료가 서로 다른 번호 체계를 갖지 않도록 이후 비교·검증의 기준축을 <code>station_no</code>로 설정.</li>
+    </ul>
+  </article>
+  <article class='history-card'>
+    <div class='version'>Total_list · 일련번호 <span>7/7–7/21</span></div>
+    <h3>목록을 기준축으로 데이터 연결을 정비</h3>
+    <ul>
+      <li>4~12지역 충전소의 추가·제거·우선순위 변경 사항을 최신 <code>Total_list</code>에 반영할 기준을 정리.</li>
+      <li><code>priority_label</code>의 1순위·2순위를 <code>preset_rank</code>의 <code>rank1</code>·<code>rank2</code>로 일치시킴.</li>
+      <li>지역 번호별 1순위는 <code>001</code>부터, 2순위는 <code>201</code>부터 <code>station_no</code>를 다시 부여하는 규칙을 적용.</li>
+      <li>새 <code>station_no</code>의 뒤 세 자리를 이용해 <code>station_seq</code>, <code>preset_order</code>, <code>priority_order</code>를 다시 산정.</li>
+      <li>변경된 <code>station_no</code>를 MapWebApp의 일련번호와 측정결과보고서의 충전소 번호에 반영하고, 중복·누락·주소·좌표 불일치를 함께 검증.</li>
+    </ul>
+  </article>
+  <article class='history-card'>
+    <div class='version'>MapWebApp 5.0 <span>7/23</span></div>
+    <h3>현장 운영과 보고용 기능을 통합</h3>
+    <ul>
+      <li>1순위 후보의 계측이 불가능할 때 바로 대체 방문할 수 있도록 1순위·2순위 운영 체계를 지도에 반영.</li>
+      <li>당진·서산부터 목포·해남까지 2순위 후보를 1,692개소에서 2,457개소로 확대해 현장 대체 후보 부족을 보완.</li>
       <li>계측 불가 사유 9개 항목을 복수 기록하고, 방문 완료·모두 사용 중·계측 불가 상태를 색상으로 구분.</li>
       <li>지도 확대 시 일련번호를 표시하고 동일 일련번호의 중복 마커 생성을 막아 중복 집계 위험을 줄임.</li>
       <li>일련번호, 우선순위, 충전용량, 방문 여부, 계측 상태를 조합하는 검색·복합 필터와 지역별 진행 현황 표시를 개선.</li>
