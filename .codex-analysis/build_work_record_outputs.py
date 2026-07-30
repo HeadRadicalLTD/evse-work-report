@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from copy import deepcopy
 from datetime import date
 from html import escape
@@ -18,7 +19,17 @@ SOURCE = ROOT / "완속충전기_통합업무기록_2026-07-06_현재.docx"
 DOCX_OUT = ROOT / "완속충전기_통합업무기록_2026-07-06_현재_업무캘린더교체.docx"
 HTML_OUT = ROOT / "완속충전기_통합업무기록_2026-07-06_현재.html"
 
-EVENTS = {
+REPORT_MONTHS = [
+    (2026, 7, "1st Monthly Report", "July 2026"),
+    (2026, 8, "2nd Monthly Report", "August 2026"),
+    (2026, 9, "3rd Monthly Report", "September 2026"),
+]
+
+EVENTS_BY_MONTH = {
+    (2026, 7): {
+    1: [("장비 운용·데이터 확보 이슈", "orange")],
+    2: [("현장 계측 불가 이슈", "orange")],
+    3: [("인천권 1주차 개선 적용", "green")],
     6: [("상태·마커 동기화", "green")],
     7: [("MapWebApp 3.0 개선", "green")],
     8: [("목록·우선순위 정비", "green")],
@@ -28,20 +39,35 @@ EVENTS = {
     15: [("보고서 목록 정비", "green"), ("LMG600 mV/kHz", "orange"), ("LMG600 250V", "orange")],
     20: [("후보·번호·지도 정비", "green")],
     21: [("목록·보고서 검증", "blue"), ("측정 지그 방수", "orange")],
-    22: [("월간 보고·To-do", "orange"), ("장비 연결 구성 확인", "orange")],
+    22: [("월간 보고·To-do", "orange")],
     23: [("MapWebApp 5.0 개선 공유", "orange")],
     24: [("운전자 연결·촬영 연동", "green"), ("보고서 자동화 구상", "blue")],
+    28: [("운전자 촬영 연동 파일 확인", "green")],
+    29: [("MapWebApp 6.0 상태 표시", "green"),
+         ("업무기록·자동화 기준 갱신", "blue")],
+    31: [("모바일 운전자 연결 개선", "green")],
+    },
+    (2026, 8): {},
+    (2026, 9): {},
 }
 
+EVENTS = EVENTS_BY_MONTH[(2026, 7)]
+
 EVENT_LINKS = {
-    (10, "MXO 얼라이먼트 오류"): ("issues", "issue-01"),
-    (14, "MXO Alignment"): ("issues", "issue-01"),
-    (14, "RT-ZHD16 Zero"): ("issues", "issue-02"),
-    (15, "LMG600 mV/kHz"): ("issues", "issue-03"),
-    (15, "LMG600 250V"): ("issues", "issue-04"),
-    (21, "측정 지그 방수"): ("issues", "issue-05"),
-    (22, "장비 연결 구성 확인"): ("issues", "issue-06"),
-    (22, "월간 보고·To-do"): ("history", "history"),
+    (2026, 7, 10, "MXO 얼라이먼트 오류"):
+        ("issues", "issue-01"),
+    (2026, 7, 14, "MXO Alignment"):
+        ("issues", "issue-01"),
+    (2026, 7, 14, "RT-ZHD16 Zero"):
+        ("issues", "issue-02"),
+    (2026, 7, 15, "LMG600 mV/kHz"):
+        ("issues", "issue-03"),
+    (2026, 7, 15, "LMG600 250V"):
+        ("issues", "issue-04"),
+    (2026, 7, 21, "측정 지그 방수"):
+        ("issues", "issue-05"),
+    (2026, 7, 22, "월간 보고·To-do"):
+        ("history", "history"),
 }
 
 
@@ -160,104 +186,289 @@ def table_html(table, cls: str = "record-table") -> str:
     return f'<div class="table-wrap"><table class="{cls}">{"".join(rows)}</table></div>'
 
 
-def make_calendar_html() -> str:
+def make_calendar_html(year: int, month: int) -> str:
     weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     header = "".join(f"<div class='weekday'>{x}</div>" for x in weekdays)
-    first_weekday = (date(2026, 7, 1).weekday() + 1) % 7
+    first_weekday = (date(year, month, 1).weekday() + 1) % 7
+    days_in_month = monthrange(year, month)[1]
+    slot_count = 42 if first_weekday + days_in_month > 35 else 35
+    events_by_day = EVENTS_BY_MONTH.get((year, month), {})
     cells = []
-    for slot in range(35):
+    for slot in range(slot_count):
         day = slot - first_weekday + 1
-        if not 1 <= day <= 31:
+        if not 1 <= day <= days_in_month:
             cells.append("<div class='day empty'></div>")
         else:
-            events = EVENTS.get(day, [])
+            events = events_by_day.get(day, [])
             kind = events[0][1] if events else ""
             label_buttons = []
             for label, event_kind in events:
                 tab_target, scroll_target = EVENT_LINKS.get(
-                    (day, label), ("daily", f"daily-2026-07-{day:02d}")
+                    (year, month, day, label),
+                    ("daily", f"daily-{year:04d}-{month:02d}-{day:02d}")
                 )
                 label_buttons.append(
-                    f"<button class='event {event_kind}' type='button' data-tab-target='{tab_target}' data-scroll-target='{scroll_target}' aria-label='{day}일 상세 내용 보기'>{escape(label).replace('MapWebApp ', 'MapWebApp&nbsp;')}<b aria-hidden='true'>↗</b></button>"
+                    f"<button class='event {event_kind}' "
+                    f"type='button' data-month='{year:04d}-{month:02d}' "
+                    f"data-tab-target='{tab_target}' "
+                    f"data-scroll-target='{scroll_target}' "
+                    f"aria-label='{month}월 {day}일 상세 내용 보기'>"
+                    f"{escape(label).replace('MapWebApp ', 'MapWebApp&nbsp;')}"
+                    "<b aria-hidden='true'>↗</b></button>"
                 )
             labels = "".join(label_buttons)
             cells.append(f"<div class='day {kind}'><span class='date'>{day}</span>{labels}</div>")
     legend = "<div class='legend'><span class='legend-green'>● 데이터·자료 정비</span><span class='legend-orange'>● 보고·기술 개선</span><span class='legend-blue'>● 업무 관리·자동화</span></div>"
-    return f"<div class='calendar'><div class='calendar-head'>{header}</div><div class='calendar-grid'>{''.join(cells)}</div>{legend}</div>"
+    return (
+        f"<div class='calendar' id='calendar-{year:04d}-{month:02d}'>"
+        f"<div class='calendar-head'>{header}</div>"
+        f"<div class='calendar-grid'>{''.join(cells)}</div>"
+        f"{legend}</div>"
+    )
+
+
+def make_month_carousel_html() -> str:
+    reports = []
+    for year, month, title, english_month in REPORT_MONTHS:
+        month_key = f"{year:04d}-{month:02d}"
+        has_content = bool(EVENTS_BY_MONTH.get((year, month)))
+        reports.append(
+            f"<article class='month-report' data-month='{month_key}' "
+            f"data-month-label='{month}월' "
+            f"data-has-content='{'true' if has_content else 'false'}'>"
+            "<button class='month-report-head month-select' type='button' "
+            f"data-select-month='{month_key}' "
+            f"aria-label='{month}월 보고서 선택'>"
+            f"<strong>{title}</strong>"
+            f"<small>EV Charger Field Inspection · {english_month}</small>"
+            "</button>"
+            f"{make_calendar_html(year, month)}</article>"
+        )
+    return (
+        "<div class='month-carousel' aria-label='월별 업무보고서'>"
+        f"{''.join(reports)}"
+        "<div class='calendar-arrow-controls' "
+        "aria-label='월별 달력 이동'>"
+        "<button class='month-arrow month-arrow-prev' type='button' "
+        "data-month-step='-1' aria-label='이전 월 보고서'>"
+        "←</button>"
+        "<button class='month-arrow month-arrow-up' type='button' "
+        "data-calendar-view='overview' "
+        "aria-label='7월부터 9월까지 전체 보기'>"
+        "↑</button>"
+        "<button class='month-arrow month-arrow-down' type='button' "
+        "data-calendar-view='individual' "
+        "aria-label='선택한 월로 돌아가기'>"
+        "↓</button>"
+        "<button class='month-arrow month-arrow-next' type='button' "
+        "data-month-step='1' aria-label='다음 월 보고서'>"
+        "→</button>"
+        "</div></div>"
+    )
 
 
 def make_change_history_html() -> str:
     return """
 <div class='history'>
-  <article class='history-card'>
+  <article class='history-card wide month-filter-item'
+      data-months='2026-07'>
+    <div class='version'>Total_list · 일련번호 <span>7/7–7/21</span></div>
+    <h3>목록·지도·측정결과의 일련번호 체계를 정비</h3>
+    <ul>
+      <li>후보 충전소의 추가·제거와 우선순위 변경이 반복되면서 자료마다 일련번호가 달라질 수 있었던 문제를 개선.</li>
+      <li>4~12지역의 최신 후보와 우선순위를 하나의 통합 목록에 반영해 충전소 관리 기준을 단일화.</li>
+      <li>지역별 1순위는 001번부터, 2순위는 201번부터 부여해 현장 방문 우선순위를 번호만으로 구분하도록 정비.</li>
+      <li>변경된 일련번호를 지도와 측정결과보고서에 함께 반영하고 주소·좌표를 교차 확인해 같은 충전소인지 검증.</li>
+      <li>자료 간 중복·누락·번호 불일치를 줄여 방문기록과 측정결과를 충전소별로 정확하게 연결할 수 있도록 개선.</li>
+    </ul>
+  </article>
+  <article class='history-card month-filter-item'
+      data-months='2026-07'>
     <div class='version'>MapWebApp 3.0 <span>7/7</span></div>
-    <h3>현장 상태와 계측 불가 사유 표시를 개선</h3>
+    <h3>현장 상태 표시를 개선</h3>
     <ul>
       <li>3kW급, 11/14kW급, 방문 완료 상태의 색상이 서로 비슷해 현장에서 구분하기 어려운 문제를 해소.</li>
       <li>지도 마커와 범례의 색상 체계를 분리해 충전용량과 방문 상태를 바로 읽을 수 있도록 변경.</li>
-      <li>계측 불가 사유를 하나만 남길 수 있던 구조를 복수 선택 방식으로 변경.</li>
-      <li>출입 불가, 선 없음, 고장, kW 변경, 불법주차, 충전 오류 등 복합 사유를 동시에 기록할 수 있도록 정비.</li>
       <li>선택된 계측 불가 사유와 방문 완료 행의 표시 색상을 맞춰, 지도·현황판·저장 상태가 같은 결과를 보도록 개선.</li>
     </ul>
   </article>
-  <article class='history-card'>
+  <article class='history-card month-filter-item'
+      data-months='2026-07'>
     <div class='version'>MapWebApp 4.0 <span>7/10</span></div>
-    <h3>최신 목록을 기준으로 지도 데이터 구조를 정비</h3>
+    <h3>목록·지도·방문기록의 충전소 기준을 통일</h3>
     <ul>
-      <li>MapWebApp의 충전소 데이터가 최신 <code>Total_list</code>의 번호·우선순위 정보와 같은 기준을 사용하도록 정리.</li>
+      <li>목록·지도·방문기록이 서로 다른 번호와 식별 기준을 사용해 같은 충전소가 잘못 연결될 수 있었던 문제를 개선.</li>
       <li>앱 기능의 고유 식별자는 <code>id</code>로 통일하고, <code>candidate_id</code>는 지도·검색·필터·CSV 매칭 기준에서 제외.</li>
       <li>방문기록 CSV는 일련번호와 <code>id</code>를 매칭 기준으로 사용하도록 고정해 동일 충전소를 안정적으로 찾게 함.</li>
-      <li>지역별로 번호를 수시로 다시 매기지 않고, 전체 현장 출장 종료 뒤 최종 리넘버링을 적용하는 기준을 정리.</li>
+      <li>지역별로 번호를 수시로 다시 매기지 않고, 전체 현장 출장 종료 뒤 최종 리넘버링을 적용하는 기준을 정리하기로 함.</li>
       <li>신버전 목록·지도·측정자료가 서로 다른 번호 체계를 갖지 않도록 이후 비교·검증의 기준축을 <code>station_no</code>로 설정.</li>
     </ul>
   </article>
-  <article class='history-card'>
-    <div class='version'>Total_list · 일련번호 <span>7/7–7/21</span></div>
-    <h3>목록을 기준축으로 데이터 연결을 정비</h3>
+  <article class='history-card month-filter-item'
+      data-months='2026-07'>
+    <div class='version'>MapWebApp 5.0 <span>7/23</span></div>
+    <h3>대체 방문과 현장 진행 관리를 하나의 지도에 통합</h3>
     <ul>
-      <li>4~12지역 충전소의 추가·제거·우선순위 변경 사항을 최신 <code>Total_list</code>에 반영할 기준을 정리.</li>
-      <li><code>priority_label</code>의 1순위·2순위를 <code>preset_rank</code>의 <code>rank1</code>·<code>rank2</code>로 일치시킴.</li>
-      <li>지역 번호별 1순위는 <code>001</code>부터, 2순위는 <code>201</code>부터 <code>station_no</code>를 다시 부여하는 규칙을 적용.</li>
-      <li>새 <code>station_no</code>의 뒤 세 자리를 이용해 <code>station_seq</code>, <code>preset_order</code>, <code>priority_order</code>를 다시 산정.</li>
-      <li>변경된 <code>station_no</code>를 MapWebApp의 일련번호와 측정결과보고서의 충전소 번호에 반영하고, 중복·누락·주소·좌표 불일치를 함께 검증.</li>
+      <li>1순위 충전소에서 계측이 불가능할 때 대체 방문 대상을 바로 찾기 어려워 현장 이동이 지연되는 문제를 개선.</li>
+      <li>2순위 후보를 1,692개소에서 2,457개소로 확대하고 지도에서 1순위·2순위를 구분해 대체 방문 선택지를 보강.</li>
+      <li>계측 불가 사유 9개를 복수 기록하고 방문 완료·사용 중·계측 불가 상태를 색상으로 구분해 현장 상황을 명확히 표시.</li>
+      <li>일련번호 중복 표시를 방지하고 번호·우선순위·충전용량·방문·계측 상태를 조합해 필요한 충전소를 빠르게 검색하도록 개선.</li>
+      <li>대체 후보 탐색과 지역별 진행 현황을 한 화면에서 관리해 불필요한 이동과 중복 집계를 줄이고 현장 대응 속도를 높임.</li>
     </ul>
   </article>
-  <article class='history-card'>
-    <div class='version'>MapWebApp 5.0 <span>7/23</span></div>
-    <h3>현장 운영과 보고용 기능을 통합</h3>
+  <article class='history-card month-filter-item'
+      data-months='2026-07'>
+    <div class='version'>MapWebApp 6.0 <span>7/28–7/31</span></div>
+    <h3>계측자–운전자 간 현장 사진 촬영 업무를 자동화</h3>
     <ul>
-      <li>1순위 후보의 계측이 불가능할 때 바로 대체 방문할 수 있도록 1순위·2순위 운영 체계를 지도에 반영.</li>
-      <li>당진·서산부터 목포·해남까지 2순위 후보를 1,692개소에서 2,457개소로 확대해 현장 대체 후보 부족을 보완.</li>
-      <li>계측 불가 사유 9개 항목을 복수 기록하고, 방문 완료·모두 사용 중·계측 불가 상태를 색상으로 구분.</li>
-      <li>지도 확대 시 일련번호를 표시하고 동일 일련번호의 중복 마커 생성을 막아 중복 집계 위험을 줄임.</li>
-      <li>일련번호, 우선순위, 충전용량, 방문 여부, 계측 상태를 조합하는 검색·복합 필터와 지역별 진행 현황 표시를 개선.</li>
+      <li>계측자 화면에서 연결 QR을 생성하고 운전자가 모바일로 같은 작업에 접속하도록 해, 충전소 번호를 말이나 메시지로 전달하면서 발생하던 촬영 대상 혼선과 오저장 위험을 개선.</li>
+      <li>지도에서 선택한 충전소 번호를 모바일 촬영 화면에 자동 전달하고 연결 지연 시 재시도해 최신 선택 번호를 유지하도록 개선.</li>
+      <li>촬영 사진을 충전소 번호에 맞는 파일명으로 변환해 지역·충전소별 Google Drive 경로에 저장하고 재촬영 시 기존 사진을 자동 교체.</li>
+      <li>실제 모바일 촬영 사진을 현장에서 실시간으로 업로드하고 저장 완료 여부를 바로 확인할 수 있게 해 번호 오기록·사진 오저장·중복 파일과 사후 정리 작업을 줄임.</li>
+      <li>모바일 화면의 운전자 연결 버튼을 하단 안전영역에 고정해 지도 조작 중에도 연결 화면을 바로 열 수 있도록 접근성을 개선.</li>
     </ul>
   </article>
 </div>"""
 
 
 def make_issue_report_html() -> str:
+    # 이월 이슈는 하나의 issue_id를 유지하고,
+    # months와 phases에 다음 달을 추가한다.
     issues = [
-        ("01", "MXO 5 얼라이먼트 실행 오류", "07.10", "07.14", "채널(C1~C8)에 프로브가 꽂힌 상태에서 Alignment를 실행하면 Id: 1408 오류가 발생.", "모든 채널의 프로브를 제거한 뒤 Alignment를 다시 실행하여 통과."),
-        ("02", "전압 프로브(RT-ZHD16) 영점 오차", "07.14", "07.14", "전압 파형이 0V 기준선에 정렬되지 않아 측정 기준점이 흔들림.", "신호 핀과 접지 집게를 직접 쇼트한 뒤 AutoZero를 수행하여 영점 보정."),
-        ("03", "LMG600 단위 표시 오류", "07.15", "07.15", "노이즈를 주파수로 인식하거나 전압 범위를 너무 낮게 잡아 mV·kHz로 표시.", "Bandwidth를 Fund. (f1)로, Range를 250V로 고정해 표시 기준을 정상화."),
-        ("04", "LMG600 전압 범위 선택 제한", "07.15", "07.15", "Jack 설정이 Usensor여서 안전 제한으로 4V 이상 범위를 선택할 수 없었음.", "노란색 잭 전용 U* 모드로 변경해 250V 범위를 활성화."),
-        ("05", "측정 지그 인출부 우천 방수 우려", "07.21", "07.21", "CP/PP 신호선 인출 틈새로 빗물이 들어갈 가능성이 확인됨.", "자기 융착 테이프로 인출부를 밀봉하고 워터 루프를 만들어 빗물 유입 경로를 차단."),
-        ("06", "장비별 연결 프로브·클램프 식별 혼선", "07.22", "07.22", "오실로스코프와 파워 어널라이저에 연결하는 프로브·클램프의 수량과 용도가 혼동됨.", "오실로스코프 1개(RT-ZHD16), 파워 어널라이저 2개(전압 리드선·전류 클램프)로 결선 구성을 재확인."),
+        {
+            "no": "01",
+            "issue_id": "ISSUE-2026-07-01",
+            "title": "MXO 5 얼라이먼트 실행 오류",
+            "occurred": "07.10",
+            "acted": "07.14",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "채널(C1~C8)에 프로브가 꽂힌 상태에서 "
+                 "Alignment를 실행하면 Id: 1408 오류가 발생.",
+                 "모든 채널의 프로브를 제거한 뒤 "
+                 "Alignment를 다시 실행하여 통과.")
+            ],
+        },
+        {
+            "no": "02",
+            "issue_id": "ISSUE-2026-07-02",
+            "title": "전압 프로브(RT-ZHD16) 영점 오차",
+            "occurred": "07.14",
+            "acted": "07.14",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "전압 파형이 0V 기준선에 정렬되지 않아 "
+                 "측정 기준점이 흔들림.",
+                 "신호 핀과 접지 집게를 직접 쇼트한 뒤 "
+                 "AutoZero를 수행하여 영점 보정.")
+            ],
+        },
+        {
+            "no": "03",
+            "issue_id": "ISSUE-2026-07-03",
+            "title": "LMG600 단위 표시 오류",
+            "occurred": "07.15",
+            "acted": "07.15",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "노이즈를 주파수로 인식하거나 전압 범위를 "
+                 "너무 낮게 잡아 mV·kHz로 표시.",
+                 "Bandwidth를 Fund. (f1)로, Range를 250V로 "
+                 "고정해 표시 기준을 정상화.")
+            ],
+        },
+        {
+            "no": "04",
+            "issue_id": "ISSUE-2026-07-04",
+            "title": "LMG600 전압 범위 선택 제한",
+            "occurred": "07.15",
+            "acted": "07.15",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "Jack 설정이 Usensor여서 안전 제한으로 "
+                 "4V 이상 범위를 선택할 수 없었음.",
+                 "노란색 잭 전용 U* 모드로 변경해 "
+                 "250V 범위를 활성화.")
+            ],
+        },
+        {
+            "no": "05",
+            "issue_id": "ISSUE-2026-07-05",
+            "title": "측정 지그 인출부 우천 방수 우려",
+            "occurred": "07.21",
+            "acted": "07.21",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "CP/PP 신호선 인출 틈새로 빗물이 "
+                 "들어갈 가능성이 확인됨.",
+                 "자기 융착 테이프로 인출부를 밀봉하고 "
+                 "워터 루프를 만들어 빗물 유입 경로를 차단.")
+            ],
+        },
     ]
     cards = []
-    for no, title, occurred, acted, problem, action in issues:
-        cards.append(f"""<article class='issue-card' id='issue-{no}'>
+    for issue in issues:
+        phase_rows = []
+        for phase_month, problem, action in issue["phases"]:
+            month_no = int(phase_month[-2:])
+            continued = len(issue["months"]) > 1
+            phase_label = (
+                f"<div class='issue-phase-label'>{month_no}월 진행"
+                f"{' · 이월 연결' if continued else ''}</div>"
+            )
+            phase_rows.append(
+                f"<div class='issue-phase' data-phase-month='{phase_month}'>"
+                f"{phase_label}"
+                "<div class='issue-row problem-row'>"
+                f"<span>문제</span><p>{escape(problem)}</p></div>"
+                "<div class='issue-row action-row'>"
+                f"<span>개선</span><p>{escape(action)}</p></div>"
+                "</div>"
+            )
+        months = " ".join(issue["months"])
+        status_views = "".join(
+            f"<span class='done issue-status-view' "
+            f"data-status-month='{status_month}'>"
+            f"{escape(status)}</span>"
+            for status_month, status in issue["statuses"].items()
+        )
+        carry_badge = (
+            "<span class='carry-badge'>월 이월</span>"
+            if len(issue["months"]) > 1 else ""
+        )
+        cards.append(f"""<article class='issue-card month-filter-item' id='issue-{issue["no"]}' data-months='{months}' data-issue-id='{issue["issue_id"]}'>
   <button class='back-calendar' type='button'>← 달력으로 돌아가기</button>
-  <div class='issue-top'><span class='issue-no'>ISSUE {no}</span><span class='issue-dates'><b>발생</b> {occurred}<i>→</i><b>개선</b> {acted}</span><span class='done'>완료</span></div>
-  <h3>{escape(title)}</h3>
-  <div class='issue-row problem-row'><span>문제</span><p>{escape(problem)}</p></div>
-  <div class='issue-row action-row'><span>개선</span><p>{escape(action)}</p></div>
+  <div class='issue-top'><span class='issue-no'>{issue["issue_id"]}</span><span class='issue-dates'><b>발생</b> {issue["occurred"]}<i>→</i><b>개선</b> {issue["acted"]}</span>{carry_badge}{status_views}</div>
+  <h3>{escape(issue["title"])}</h3>
+  {''.join(phase_rows)}
 </article>""")
     return "<div class='issues'>" + "".join(cards) + "</div>"
 
 
 DAILY_IMPROVEMENTS = [
+    ("2026-07-01", "인천권 1주차 현장 계측 - 장비 운용 시행착오", [
+        "문제: 고조파 화면 확인, Raw Data 저장, 파형 캡처와 측정결과보고서 입력 절차를 현장 작업 흐름에 맞춰 정리할 필요 발생.",
+    ]),
+    ("2026-07-02", "인천권 1주차 현장 계측 - 운영 이슈 확인", [
+        "문제: 충전기 고장·확인 불가·외부인 사용 제한·결제 불가 등으로 계측이 어려운 현장 사례 다수 확인.",
+        "문제: 단순 방문 완료 여부만으로는 계측 불가 원인과 후속 대응 대상을 구분하기 어려운 운영상 한계 확인.",
+    ]),
+    ("2026-07-03", "인천권 1주차 현장 계측 - 개선 적용 및 결과", [
+        "조치: 장비 연결·측정 위치·고조파 화면 확인·Raw Data 저장·파형 캡처 절차를 현장 작업 기준으로 정리.",
+        "조치: 지도 WebApp·방문기록 CSV에 방문 상태와 계측 불가 사유를 구분 기록하는 관리 방식 적용.",
+        "조치: 측정결과보고서에 충전소 번호 기반 정보 반영과 주요 계측 항목 입력 구조를 적용.",
+        "결과: 6월 29일~7월 3일 인천권 237개소 관리 대상 중 130개소 방문 완료, 계측값 80개소 입력 완료.",
+    ]),
     ("2026-07-06", "상태 저장·마커·현황판 동기화", [
         "문제: 방문 완료·모두 사용 중·계측 불가 상태가 새로고침 후 유지되지 않아 현장 기록이 달라질 가능성 존재.",
         "조치: 상태 저장·복원 흐름 구성 및 재접속 시 마지막 현장 상태 호출.",
@@ -265,33 +476,31 @@ DAILY_IMPROVEMENTS = [
         "조치: 상태 변경 시 지도·라벨·현황 집계·저장 데이터의 상태값 동기화 및 방문 상태 표기 통일.",
         "결과: 새로고침·브라우저 재실행 후 현장 방문·계측 상태 연속 확인.",
     ]),
-    ("2026-07-07", "MapWebApp 3.0 표시·사유 입력 개선", [
+    ("2026-07-07", "MapWebApp 3.0 현장 상태 표시 개선", [
         "문제: 3kW급·11/14kW급·방문 완료 마커 간 색상 유사로 인한 지도 상태 구분 지연.",
         "조치: 충전용량과 방문 완료 상태의 마커·범례 색상 체계 분리.",
-        "문제: 단일 선택 방식으로 인한 복합 계측 불가 사유 기록 한계.",
-        "조치: 출입 불가·선 없음·고장·kW 변경·불법주차·충전 오류 등 복수 사유 선택 구조 적용.",
-        "결과: 상태 표시 및 계측 불가 사유의 지도·현황판 반영 기준 명확화.",
+        "조치: 선택된 계측 불가 사유와 방문 완료 행의 표시 색상을 맞춰 지도·현황판·저장 상태가 같은 결과를 보도록 개선.",
+        "결과: 충전용량과 방문 상태를 지도에서 바로 구분하고 화면별 상태 혼선을 줄임.",
     ]),
     ("2026-07-08", "4~12지역 목록·우선순위·일련번호 재정비", [
-        "문제: group_no 4~12 지역의 추가·제거·우선순위 변경 반영 기준 부재.",
-        "조치: priority_label 기준 preset_rank를 rank1·rank2로 통일.",
-        "조치: 지역별 station_no 재부여: 1순위 001~, 2순위 201~.",
-        "조치: station_no 뒤 세 자리 기준 station_seq·preset_order 재생성 및 priority_order 기준 정비.",
-        "결과: Total_list·MapWebApp·측정결과보고서 간 우선순위·일련번호 기준 통일 및 검증 기반 확보.",
+        "문제: 후보 충전소의 추가·제거와 우선순위 변경이 반복되면서 자료마다 일련번호가 달라질 가능성 확인.",
+        "조치: 4~12지역의 최신 후보와 우선순위를 하나의 Total_list에 반영해 충전소 관리 기준을 단일화.",
+        "조치: 지역별 1순위는 001번부터, 2순위는 201번부터 부여해 방문 우선순위를 번호로 구분.",
+        "결과: 후보 목록과 우선순위·일련번호를 이후 지도·측정결과 동기화의 공통 기준으로 정리.",
     ]),
     ("2026-07-10", "MapWebApp 4.0 데이터 기준 정리", [
         "문제: 목록·지도·방문기록 간 식별자·번호 기준 불일치에 따른 충전소 오매칭 위험.",
         "조치: 앱 고유 식별자를 id로 고정하고 candidate_id를 화면·검색·필터·CSV 처리 대상에서 제외.",
-        "조치: 방문기록 CSV의 일련번호→id 연결 기준 정비.",
-        "조치: 신버전 Total_list station_no를 지도·측정자료 번호 정합성 검증 기준으로 지정.",
+        "조치: 방문기록 CSV는 일련번호와 id를 매칭 기준으로 사용해 동일 충전소를 찾도록 정비.",
+        "조치: 지역별로 번호를 수시로 다시 매기지 않고, 전체 현장 출장 종료 뒤 최종 리넘버링을 적용하는 기준을 정리하기로 함.",
+        "조치: 신버전 목록·지도·측정자료의 번호 비교·검증 기준을 station_no로 설정.",
         "결과: MapWebApp 4.0 목록·방문기록·지도 데이터 비교 기준 단일화.",
     ]),
     ("2026-07-13", "station_no·주소·일련번호 정합성 검증", [
         "문제: 목록·지도·측정결과보고서 간 번호·주소 불일치에 따른 결과 통합 오류 위험.",
-        "조치: station_no·주소·일련번호 통합 비교 기준 수립.",
-        "조치: 번호뿐 아니라 주소·좌표까지 비교하는 동일 충전소 판정 기준 적용.",
-        "조치: 중복·누락·자동생성 번호 차이·매칭 불가 항목의 별도 확인 체계 구성.",
-        "결과: Total_list 기준 MapWebApp·측정결과보고서 번호 대조 체계 확보.",
+        "조치: Total_list에서 변경된 일련번호를 MapWebApp과 측정결과보고서에 함께 반영.",
+        "조치: 일련번호뿐 아니라 주소·좌표까지 교차 확인해 같은 충전소인지 검증.",
+        "결과: 목록·지도·측정결과보고서의 동일 충전소 판정과 번호 대조 체계 확보.",
     ]),
     ("2026-07-15", "측정결과보고서 목록 정비", [
         "문제: 측정결과보고서 목록의 충전소 표기·정렬 기준 재점검 필요.",
@@ -300,17 +509,15 @@ DAILY_IMPROVEMENTS = [
     ]),
     ("2026-07-20", "최신 Total_list를 지도·보고서에 동기화", [
         "문제: 4~12지역 2순위 후보 보강 후 최신 목록과 기존 지도·측정보고서 간 충전소 수·번호 불일치.",
-        "조치: 수정 Total_list 기준 측정결과보고서 충전소 번호 재매칭·갱신.",
-        "조치: MapWebApp 일련번호를 최신 Total_list station_no와 정합화하고 누락·중복 동시 점검.",
-        "조치: 기존 지도 2,633개소와 최신 목록 3,827개소 비교 및 신규 1,194개소 추가 구조 확인.",
-        "결과: 후보 추가·제거·우선순위 변경의 목록·지도·보고서 번호 체계 연계.",
+        "조치: 최신 Total_list를 기준으로 측정결과보고서의 충전소 번호를 다시 연결하고 갱신.",
+        "조치: MapWebApp 일련번호를 최신 목록과 맞추고 누락·중복을 함께 점검.",
+        "결과: 후보 추가·제거·우선순위 변경 사항을 목록·지도·측정결과의 같은 번호 체계로 연결.",
     ]),
     ("2026-07-21", "목록·보고서·방문기록 교차 검증", [
         "문제: 파일별 중복·누락·주소·좌표·일련번호 불일치에 따른 진행 현황·계측 결과 집계 오류 위험.",
-        "조치: Total_list·측정결과보고서의 주소·위도·경도·충전소 번호·자동생성 번호 교차 비교.",
-        "조치: 방문기록 CSV에 목록버전·일련번호·방문 열을 구성하고 MapWebApp 가져오기 형식과 정합화.",
-        "조치: 빈·중복 일련번호, 행 수, 헤더 구성의 검증 범위 포함.",
-        "결과: 최신 목록·보고서·지도 방문기록의 동일 충전소 지칭 여부 재검증 기반 확보.",
+        "조치: Total_list·측정결과보고서·방문기록의 주소·좌표·일련번호를 교차 비교.",
+        "조치: 빈 번호·중복 번호·누락 항목과 서로 다른 충전소 연결 여부를 함께 점검.",
+        "결과: 자료 간 중복·누락·번호 불일치를 줄여 방문기록과 측정결과를 충전소별로 정확하게 연결.",
     ]),
     ("2026-07-22", "지도 일련번호 상시 표시 복구", [
         "문제: 마커 선택 후 팝업 종료 시 확대 상태의 일련번호 라벨 소실 및 지도 이동 전 미복구.",
@@ -328,17 +535,42 @@ DAILY_IMPROVEMENTS = [
     ]),
     ("2026-07-24", "운전자 연결·촬영 연동 및 보고서 자동화 구상", [
         "문제: 일일 계측 CSV를 측정결과보고서에 반복 반영하기 위한 입력 기준·자동화 방식 미확정.",
-        "조치: 퍼센트 변환·제조년월 입력을 포함한 계측보고서 자동 작성 방식 검토.",
+        "조치: 보고서 실제 헤더를 기준으로 RMS·최대값·최소값·주파수·THD·역률과 전압·전류 1차~50차 고조파의 자동 입력 범위를 확인.",
+        "조치: 각 고조파 성분을 기본파 대비 백분율로 변환하고 제조 일자는 현장 확인값을 별도 입력하는 방식 검토.",
         "조치: 운전자 연결·제원 사진 촬영 화면과 Google Apps Script 구성 파일 생성.",
         "결과: 운전자 연결·촬영 연동 및 보고서 자동화 관련 파일 생성 확인. 배포 주소·권한 설정·실제 통신 시험은 추가 확인 필요.",
     ]),
+    ("2026-07-28", "MapWebApp 6.0 운전자 촬영 연동 구성", [
+        "문제: 계측자와 운전자가 충전소 번호를 말이나 메시지로 전달해 촬영 대상이 혼동되거나 잘못된 번호로 저장될 위험 존재.",
+        "조치: 계측자 화면에서 연결 QR을 생성하고 운전자가 모바일로 같은 작업에 접속하도록 구성.",
+        "조치: 지도에서 선택한 충전소 번호를 모바일 촬영 화면에 자동 전달하고 연결 지연 시 최신 번호를 다시 전달하도록 개선.",
+        "결과: 계측자–운전자 간 촬영 대상 전달 흐름을 구성했으며, 당시 Apps Script 배포와 실제 모바일 업로드는 추가 확인 대상으로 기록.",
+    ]),
+    ("2026-07-29", "MapWebApp 6.0 실시간 촬영·저장 확인", [
+        "문제: 구형 서버 확인 결과가 실시간 연결 상태를 덮어쓰고, 모바일 촬영·저장 흐름의 현장 최종 확인이 필요했음.",
+        "조치: 실시간 연결 상태와 최신 충전소 번호가 유지되도록 자동 재시도와 상태 표시 흐름을 개선.",
+        "조치: 촬영 사진을 충전소 번호에 맞는 파일명으로 변환해 지역·충전소별 Google Drive 경로에 저장하고 재촬영 시 기존 사진을 자동 교체.",
+        "조치: 실제 모바일 촬영 사진을 현장에서 실시간으로 업로드하고 저장 완료 여부를 바로 확인.",
+        "결과: 번호 오기록·사진 오저장·중복 파일과 사후 정리 작업을 줄이는 현장 촬영·저장 흐름의 정상 동작을 최종 확인.",
+    ]),
+    ("2026-07-31", "MapWebApp 6.0 모바일 운전자 연결 접근성 개선", [
+        "문제: 모바일 화면의 운전자 연결 기능이 기존 버튼 위치에 의존해 지도 조작 중 빠르게 접근하기 어려울 수 있었음.",
+        "조치: 모바일에서는 기존 버튼 대신 화면 하단에 고정된 운전자 연결 버튼을 표시하도록 개선.",
+        "조치: 기기 하단 안전영역을 고려한 여백과 화면 폭에 맞는 버튼 크기를 적용하고, 기존 연결 화면과 동일하게 동작하도록 연계.",
+        "결과: 지도 화면 위치와 관계없이 모바일에서 운전자 연결 화면을 바로 열 수 있도록 접근 경로를 개선. 실제 휴대전화 화면 확인은 추가 검증 필요.",
+    ]),
 ]
+
+DAILY_PROBLEM_START = {
+    "2026-07-01": 0,
+    "2026-07-02": 1,
+}
 
 
 def make_daily_history_html() -> str:
     blocks = []
     for day, title, items in DAILY_IMPROVEMENTS:
-        problem_no = 0
+        problem_no = DAILY_PROBLEM_START.get(day, 0)
         action_no = 0
         lines = []
         for item in items:
@@ -360,7 +592,18 @@ def make_daily_history_html() -> str:
             else:
                 label = prefix
             lines.append(f"<li class='{kind}'><span class='step-label'>{escape(label)}</span><span>{escape(content)}</span></li>")
-        blocks.append(f"<details class='daily' id='daily-{day}' open><summary><span>{day}</span><strong>{escape(title)}</strong></summary><div class='improvement'><button class='back-calendar' type='button'>← 달력으로 돌아가기</button><ul class='detail-steps'>{''.join(lines)}</ul></div></details>")
+        month_key = day[:7]
+        blocks.append(
+            f"<details class='daily month-filter-item' "
+            f"id='daily-{day}' data-months='{month_key}' open>"
+            f"<summary><span>{day}</span>"
+            f"<strong>{escape(title)}</strong></summary>"
+            "<div class='improvement'>"
+            "<button class='back-calendar' type='button'>"
+            "← 달력으로 돌아가기</button>"
+            f"<ul class='detail-steps'>{''.join(lines)}</ul>"
+            "</div></details>"
+        )
     return "".join(blocks)
 
 
@@ -374,15 +617,20 @@ def make_html() -> None:
 <title>완속충전기 통합 업무기록</title>
 <style>
 :root{{--bg:#171717;--card:#202020;--line:#404040;--text:#f4f4f4;--muted:#b4b4b4;--green:#72d99c;--orange:#ff9e55;--blue:#acd7ff}}
-*{{box-sizing:border-box}} body{{margin:0;background:var(--bg);color:var(--text);font-family:'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;line-height:1.6}}
+*{{box-sizing:border-box}} body{{margin:0;overflow-x:hidden;background:var(--bg);color:var(--text);font-family:'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;line-height:1.6}}
 .page{{width:100%;max-width:1440px;margin:0 auto;padding:0 42px 56px}} .hero{{display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding:0 0 23px;border-bottom:1px solid var(--line)}}
 .eyebrow{{display:none}} h1{{flex:1;min-width:0;white-space:nowrap;font-size:30px;line-height:1.2;margin:0;font-weight:800;letter-spacing:-.04em}} .hero p{{flex:0 0 auto;margin:0;color:var(--muted);font-size:16px;font-weight:600}}
 .panel{{margin-top:22px}} h2{{margin:0 0 18px;font-size:21px;letter-spacing:-.02em}}
+.month-carousel{{display:grid;grid-template-columns:minmax(118px,14%) minmax(0,72%) minmax(118px,14%);align-items:start;min-height:630px;overflow:hidden}} .month-carousel[data-count='1']{{grid-template-columns:0 minmax(0,100%) 0}} .month-report{{display:none;grid-row:1;min-width:0;transition:opacity .25s ease,transform .25s ease}} .month-report.is-available{{display:block}} .month-report.active{{grid-column:2;z-index:2;opacity:1}} .month-report.side-left{{grid-column:1}} .month-report.side-right{{grid-column:3}} .month-select{{width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}} .month-report.active .month-select{{cursor:default}} .month-report:not(.active){{opacity:.58;transform:scale(.96)}} .month-report:not(.active):hover,.month-report:not(.active):focus-within{{opacity:.88;transform:scale(.99)}} .month-report:not(.active) .calendar{{pointer-events:none}} .month-report-head{{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 0 15px;border-bottom:1px solid var(--line);margin-bottom:17px}} .month-report-head:focus-visible{{outline:2px solid var(--green);outline-offset:5px}} .month-report-head strong{{font-size:28px;line-height:1.2;letter-spacing:-.04em;white-space:nowrap}} .month-report-head small{{color:var(--muted);font-size:14px;font-weight:700;white-space:nowrap}} .month-report:not(.active) .month-report-head{{display:block;padding:0 7px 10px;margin-bottom:10px}} .month-report:not(.active) .month-report-head strong{{display:block;font-size:18px;white-space:normal}} .month-report:not(.active) .month-report-head small{{display:none}} .month-report:not(.active) .calendar-head,.month-report:not(.active) .calendar-grid{{gap:2px}} .month-report:not(.active) .weekday{{font-size:8px}} .month-report:not(.active) .day{{min-height:55px;padding:4px 3px;border-radius:5px;gap:2px}} .month-report:not(.active) .date{{font-size:10px}} .month-report:not(.active) .event{{padding:1px 2px;font-size:0;min-height:6px}} .month-report:not(.active) .event::before{{width:5px;height:5px;margin:0}} .month-report:not(.active) .event b,.month-report:not(.active) .legend{{display:none}} .month-scope{{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 0 0}} .scope-button{{display:none;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:#202020;color:var(--muted);cursor:pointer;font:inherit;font-size:13px;font-weight:800}} .scope-button.is-available{{display:inline-flex}} .scope-button.active{{border-color:#4b8f67;background:#203128;color:#9ce7b9}} .scope-button:hover,.scope-button:focus-visible{{border-color:#4b8f67;color:#fff;outline:none}} .month-empty{{display:none;margin:18px 0;padding:24px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center;font-weight:700}} .month-empty.visible{{display:block}}
+.month-carousel{{position:relative}} .month-report:not(.active){{cursor:pointer}} .calendar-arrow-controls{{position:absolute;inset:0;z-index:7;pointer-events:none}} .month-arrow{{position:absolute;top:50%;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;transform:translateY(-50%);border:1px solid #4b8f67;border-radius:50%;background:rgba(26,43,34,.92);color:#9ce7b9;cursor:pointer;font:inherit;font-size:22px;font-weight:900;line-height:1;pointer-events:auto;box-shadow:0 5px 18px rgba(0,0,0,.28);transition:opacity .16s ease,background .16s ease,transform .16s ease}} .month-arrow-prev{{left:calc(14% - 21px)}} .month-arrow-next{{right:calc(14% - 21px)}} .month-arrow:hover:not(:disabled),.month-arrow:focus-visible{{background:#2a4a38;outline:2px solid var(--green);outline-offset:3px;transform:translateY(-50%) scale(1.06)}} .month-arrow:disabled{{opacity:.18;cursor:default}} .month-carousel[data-count='1'] .calendar-arrow-controls{{display:none}}
+.month-carousel{{display:block;min-height:0;overflow:hidden;isolation:isolate}} .month-report.is-available{{position:absolute;top:0;left:5%;right:auto;width:90%;z-index:1;overflow:hidden;background:var(--bg);opacity:1;filter:brightness(.38);transform:none;transition:none}} .month-carousel.ready .month-report.is-available{{transition:left .35s ease,right .35s ease,width .35s ease,filter .25s ease}} .month-report.active{{position:relative;left:auto;right:auto;width:90%;margin:0 auto;z-index:4;overflow:visible;background:var(--bg);opacity:1;filter:none;transform:none}} .month-report.side-left-near{{left:auto;right:95%;z-index:2;filter:brightness(.62)}} .month-report.side-left-far{{left:auto;right:97.5%;z-index:3;filter:brightness(.42)}} .month-report.side-right-near{{left:95%;right:auto;z-index:2;filter:brightness(.62)}} .month-report.side-right-far{{left:97.5%;right:auto;z-index:3;filter:brightness(.42)}} .month-report:not(.active):hover,.month-report:not(.active):focus-within{{opacity:1;filter:brightness(.82);transform:none}} .month-carousel[data-count='1'] .month-report.active{{width:100%}} .month-report:not(.active) .month-report-head{{visibility:hidden;display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 0 15px;margin-bottom:17px}} .month-report:not(.active)::after{{content:attr(data-month-label);position:absolute;top:8px;z-index:9;border:1px solid #4b8f67;border-radius:999px;background:#203128;color:#9ce7b9;padding:4px 9px;font-size:13px;font-weight:900;white-space:nowrap}} .month-report.side-left-near::after{{right:2px}} .month-report.side-left-far::after{{right:1px;top:44px;padding:2px 3px;font-size:10px}} .month-report.side-right-near::after{{left:2px}} .month-report.side-right-far::after{{left:1px;top:44px;padding:2px 3px;font-size:10px}} .month-report:not(.active) .calendar-head,.month-report:not(.active) .calendar-grid{{gap:8px}} .month-report:not(.active) .weekday{{font-size:16px}} .month-report:not(.active) .day{{min-height:126px;padding:12px 9px;border-radius:12px;gap:6px}} .month-report:not(.active) .date{{font-size:20px}} .month-report:not(.active) .event{{min-height:0;padding:3px 17px 3px 4px;font-size:13px}} .month-report:not(.active) .event::before{{width:9px;height:9px;margin:0 5px 1px 0}} .month-report:not(.active) .event b{{display:block}} .month-arrow-prev{{left:calc(5% - 21px)}} .month-arrow-next{{right:calc(5% - 21px)}}
+.month-arrow-up{{top:10px;left:50%;transform:translateX(-50%)}} .month-arrow-down{{display:none;top:auto;bottom:0;left:50%;transform:translateX(-50%)}} .month-arrow-up:hover:not(:disabled),.month-arrow-up:focus-visible,.month-arrow-down:hover:not(:disabled),.month-arrow-down:focus-visible{{transform:translateX(-50%) scale(1.06)}} .month-carousel.overview{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;overflow:visible;padding-bottom:52px}} .month-carousel.overview[data-count='2']{{grid-template-columns:repeat(2,minmax(0,1fr))}} .month-carousel.overview .month-report.is-available{{position:relative;inset:auto;width:auto;margin:0;grid-column:auto;grid-row:auto;z-index:1;overflow:visible;filter:none;cursor:pointer;transition:none}} .month-carousel.overview .month-report:not(.active):hover,.month-carousel.overview .month-report:not(.active):focus-within{{filter:brightness(1.12)}} .month-carousel.overview .month-report:not(.active)::after{{display:none}} .month-carousel.overview .month-report:not(.active) .month-report-head{{visibility:visible;display:block;padding:0 0 10px;margin-bottom:10px}} .month-carousel.overview .month-report-head strong{{display:block;font-size:19px;white-space:normal}} .month-carousel.overview .month-report-head small{{display:block;margin-top:4px;font-size:9px;white-space:normal}} .month-carousel.overview .calendar-head,.month-carousel.overview .calendar-grid{{gap:3px}} .month-carousel.overview .weekday{{font-size:9px}} .month-carousel.overview .day{{min-height:62px;padding:5px 4px;border-radius:7px;gap:3px}} .month-carousel.overview .date{{font-size:12px}} .month-carousel.overview .event{{min-height:0;padding:1px 7px 1px 2px;font-size:8px;line-height:1.2}} .month-carousel.overview .event::before{{width:5px;height:5px;margin:0 3px 1px 0}} .month-carousel.overview .event b{{display:block}} .month-carousel.overview .legend{{font-size:9px;gap:8px;margin-top:8px}} .month-carousel.overview .month-arrow-up{{display:none}} .month-carousel.overview .month-arrow-down{{display:inline-flex}}
 .table-wrap{{overflow-x:auto}} table{{border-collapse:collapse;width:100%;font-size:14px}} th{{background:#292929;color:#fff;font-weight:700}} th,td{{border:1px solid var(--line);padding:10px 12px;vertical-align:top;text-align:left}} .metadata th{{width:22%;white-space:nowrap}} .metadata td{{font-weight:600}}
-.calendar{{border:0;border-radius:0;overflow:visible}} .calendar-head,.calendar-grid{{display:flex;flex-wrap:wrap;gap:9px}} .calendar-head{{margin-bottom:9px}} .weekday{{flex:0 1 calc((100% - 54px) / 7);min-width:0;color:var(--muted);text-align:center;font-weight:700;padding:0;font-size:17px}} .day{{box-sizing:border-box;flex:0 1 calc((100% - 54px) / 7);min-width:0;min-height:132px;padding:13px 10px;border:1px solid var(--line);border-radius:13px;background:var(--card);display:flex;flex-direction:column;gap:7px}} .day.empty{{border-color:transparent;background:transparent}} .date{{font-weight:800;color:#fff;font-size:21px;line-height:1}} .event{{display:block;width:100%;padding:3px 4px;border:1px solid transparent;border-radius:6px;background:transparent;color:#f7f7f7;cursor:pointer;white-space:nowrap;font-family:inherit;text-align:left;font-size:clamp(12px,.9vw,14px);font-weight:800;line-height:1.35;letter-spacing:-.055em;transition:background .16s ease,border-color .16s ease,transform .16s ease}} .event:hover,.event:focus-visible{{background:#2b3330;border-color:#4b8f67;outline:none;transform:translateX(2px)}} .event b{{float:right;margin-left:3px;color:#8fe6b2;font-size:11px;opacity:.8}} .event::before{{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);margin:0 6px 1px 0}} .event.orange::before{{background:var(--orange)}} .event.blue::before{{background:var(--blue)}} .event.purple::before{{background:var(--orange)}} .daily.jump-target{{outline:2px solid var(--green);outline-offset:3px;box-shadow:0 0 0 7px rgba(112,225,160,.13)}}
+.calendar{{border:0;border-radius:0;overflow:visible}} .calendar-head,.calendar-grid{{display:flex;flex-wrap:wrap;gap:9px}} .calendar-head{{margin-bottom:9px}} .weekday{{flex:0 1 calc((100% - 54px) / 7);min-width:0;color:var(--muted);text-align:center;font-weight:700;padding:0;font-size:17px}} .day{{box-sizing:border-box;flex:0 1 calc((100% - 54px) / 7);min-width:0;min-height:132px;padding:13px 10px;border:1px solid var(--line);border-radius:13px;background:var(--card);display:flex;flex-direction:column;gap:7px;overflow:hidden}} .day.empty{{border-color:transparent;background:transparent}} .date{{font-weight:800;color:#fff;font-size:21px;line-height:1}} .event{{position:relative;display:block;width:100%;min-width:0;padding:3px 18px 3px 4px;border:1px solid transparent;border-radius:6px;background:transparent;color:#f7f7f7;cursor:pointer;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-family:inherit;text-align:left;font-size:clamp(12px,.9vw,14px);font-weight:800;line-height:1.35;letter-spacing:-.055em;transition:background .16s ease,border-color .16s ease,transform .16s ease}} .event:hover,.event:focus-visible{{background:#2b3330;border-color:#4b8f67;outline:none;transform:translateX(2px)}} .event b{{position:absolute;right:4px;top:4px;float:none;margin:0;color:#8fe6b2;font-size:11px;opacity:.8}} .event::before{{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);margin:0 6px 1px 0}} .event.orange::before{{background:var(--orange)}} .event.blue::before{{background:var(--blue)}} .event.purple::before{{background:var(--orange)}} .daily.jump-target{{outline:2px solid var(--green);outline-offset:3px;box-shadow:0 0 0 7px rgba(112,225,160,.13)}}
+.month-carousel:not(.overview) .month-report.active .day{{padding-left:6px;padding-right:6px}} .month-carousel:not(.overview) .month-report.active .event{{padding-left:2px;padding-right:13px;white-space:nowrap;word-break:normal;overflow-wrap:normal;overflow:hidden;text-overflow:ellipsis;font-size:clamp(10px,.7vw,12px);letter-spacing:-.07em}} .month-carousel:not(.overview) .month-report.active .event::before{{width:8px;height:8px;margin-right:3px}}
 .legend{{display:flex;flex-wrap:wrap;gap:18px;margin-top:20px;color:#d1d1d1;font-size:14px;font-weight:700}} .legend-green{{color:#d1d1d1}} .legend-orange{{color:#d1d1d1}} .legend-blue{{color:#d1d1d1}} .legend-green::first-letter{{color:var(--green)}} .legend-orange::first-letter{{color:var(--orange)}} .legend-blue::first-letter{{color:var(--blue)}} .foot{{color:var(--muted);font-size:13px;margin-top:26px}}
-.history{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}} .history-card{{position:relative;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,#222 0%,#1d1d1d 100%);padding:19px 21px 20px;overflow:hidden}} .history-card::before{{content:'';position:absolute;inset:0 auto 0 0;width:4px;background:var(--blue)}} .history-card:nth-child(odd)::before{{background:var(--green)}} .history-card h3{{margin:12px 0 14px;font-size:19px;line-height:1.3;letter-spacing:-.04em}} .version{{display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:12px;font-weight:900;letter-spacing:.04em}} .version span{{color:#aeb6b9;font-weight:700;letter-spacing:0}} .history-card ul{{margin:0;padding:0;list-style:none;color:#e2e2e2;font-size:13px;line-height:1.62}} .history-card li{{position:relative;padding:8px 10px 8px 24px;border-radius:7px;background:#202b27}} .history-card li+li{{margin-top:6px}} .history-card li::before{{content:'✓';position:absolute;left:9px;color:var(--green);font-weight:900}} .history-card:nth-child(even) li{{background:#20262c}} .history-card:nth-child(even) li::before{{color:var(--blue)}} .history-card code{{font-family:Consolas,'Malgun Gothic',monospace;font-size:.92em;color:#baddff}}
-.issues{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}} .issue-card{{position:relative;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,#222 0%,#1d1d1d 100%);padding:19px 21px 20px;overflow:hidden}} .issue-card::before{{content:'';position:absolute;inset:0 auto 0 0;width:4px;background:var(--green)}} .issue-top{{display:flex;align-items:center;gap:10px}} .issue-no{{color:var(--green);font-size:12px;font-weight:900;letter-spacing:.04em}} .issue-dates{{margin-left:auto;display:flex;align-items:center;gap:6px;color:#aeb6b9;font-size:12px;font-weight:700}} .issue-dates b{{color:#e4e4e4;font-size:11px}} .issue-dates i{{color:#6e777a;font-style:normal}} .done{{border:1px solid #347955;border-radius:20px;padding:3px 9px;color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}} .issue-card h3{{margin:12px 0 15px;font-size:19px;line-height:1.28;letter-spacing:-.04em}} .issue-row{{display:grid;grid-template-columns:50px minmax(0,1fr);gap:10px;padding:10px 11px;border-radius:8px}} .issue-row+ .issue-row{{margin-top:7px}} .issue-row>span{{font-size:12px;font-weight:900;line-height:1.65}} .issue-row p{{margin:0;color:#e7e7e7;font-size:13px;line-height:1.65}} .problem-row{{background:#2b2722}} .problem-row>span{{color:#ffb06a}} .action-row{{background:#202c27}} .action-row>span{{color:var(--green)}} .back-calendar{{display:none;margin:0 0 12px;padding:6px 10px;border:1px solid #4b8f67;border-radius:7px;background:#202c27;color:#8fe6b2;cursor:pointer;font:inherit;font-size:13px;font-weight:800}} .from-calendar .back-calendar{{display:inline-flex;align-items:center;gap:5px}} .back-calendar:hover,.back-calendar:focus-visible{{background:#2b4236;outline:none}}
+.history{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}} .history-card{{position:relative;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,#222 0%,#1d1d1d 100%);padding:19px 21px 20px;overflow:hidden}} .history-card.wide{{grid-column:1 / -1}} .history-card::before{{content:'';position:absolute;inset:0 auto 0 0;width:4px;background:var(--blue)}} .history-card:nth-child(odd)::before{{background:var(--green)}} .history-card h3{{margin:12px 0 14px;font-size:19px;line-height:1.3;letter-spacing:-.04em}} .version{{display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:12px;font-weight:900;letter-spacing:.04em}} .version span{{color:#aeb6b9;font-weight:700;letter-spacing:0}} .history-card ul{{margin:0;padding:0;list-style:none;color:#e2e2e2;font-size:13px;line-height:1.62}} .history-card li{{position:relative;padding:8px 10px 8px 24px;border-radius:7px;background:#202b27}} .history-card li+li{{margin-top:6px}} .history-card li::before{{content:'✓';position:absolute;left:9px;color:var(--green);font-weight:900}} .history-card:nth-child(even) li{{background:#20262c}} .history-card:nth-child(even) li::before{{color:var(--blue)}} .history-card code{{font-family:Consolas,'Malgun Gothic',monospace;font-size:.92em;color:#baddff}}
+.issues{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}} .issue-card{{position:relative;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,#222 0%,#1d1d1d 100%);padding:19px 21px 20px;overflow:hidden}} .issue-card::before{{content:'';position:absolute;inset:0 auto 0 0;width:4px;background:var(--green)}} .issue-top{{display:flex;align-items:center;gap:10px;flex-wrap:wrap}} .issue-no{{color:var(--green);font-size:12px;font-weight:900;letter-spacing:.04em}} .issue-dates{{margin-left:auto;display:flex;align-items:center;gap:6px;color:#aeb6b9;font-size:12px;font-weight:700}} .issue-dates b{{color:#e4e4e4;font-size:11px}} .issue-dates i{{color:#6e777a;font-style:normal}} .done,.carry-badge{{border:1px solid #347955;border-radius:20px;padding:3px 9px;color:var(--green);font-size:12px;font-weight:800;white-space:nowrap}} .carry-badge{{border-color:#53799e;color:var(--blue)}} .issue-card h3{{margin:12px 0 15px;font-size:19px;line-height:1.28;letter-spacing:-.04em}} .issue-phase-label{{display:none;margin:2px 0 8px;color:var(--blue);font-size:12px;font-weight:900}} .issue-card[data-months*=' '] .issue-phase-label{{display:block}} .issue-phase+ .issue-phase{{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}} .issue-row{{display:grid;grid-template-columns:50px minmax(0,1fr);gap:10px;padding:10px 11px;border-radius:8px}} .issue-row+ .issue-row{{margin-top:7px}} .issue-row>span{{font-size:12px;font-weight:900;line-height:1.65}} .issue-row p{{margin:0;color:#e7e7e7;font-size:13px;line-height:1.65}} .problem-row{{background:#2b2722}} .problem-row>span{{color:#ffb06a}} .action-row{{background:#202c27}} .action-row>span{{color:var(--green)}} .back-calendar{{display:none;margin:0 0 12px;padding:6px 10px;border:1px solid #4b8f67;border-radius:7px;background:#202c27;color:#8fe6b2;cursor:pointer;font:inherit;font-size:13px;font-weight:800}} .from-calendar .back-calendar{{display:inline-flex;align-items:center;gap:5px}} .back-calendar:hover,.back-calendar:focus-visible{{background:#2b4236;outline:none}} .month-filter-item.filtered-out,.issue-phase.filtered-out,.issue-status-view.filtered-out{{display:none!important}}
 .tabbed-report{{margin-top:42px;border-top:1px solid var(--line);padding-top:20px}} .tabs{{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}} .tab{{appearance:none;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted);cursor:pointer;padding:13px 12px 12px;font:inherit;font-size:16px;font-weight:800;letter-spacing:-.03em;text-align:center}} .tab:hover{{color:#fff}} .tab.active{{border-bottom-color:var(--green);color:#fff}} .tab-panel{{display:none;padding-top:22px}} .tab-panel.active{{display:block}} .tab-panel h2{{margin-bottom:4px}}
 .daily{{position:relative;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,#222 0%,#1d1d1d 100%);margin-top:12px;overflow:hidden}} .daily::before{{content:'';position:absolute;inset:0 auto 0 0;width:4px;background:var(--blue)}} .daily summary{{display:flex;align-items:center;gap:13px;cursor:pointer;padding:16px 20px;font-size:16px;font-weight:700;list-style:none;background:#202020}} .daily summary::-webkit-details-marker{{display:none}} .daily summary span{{display:inline-flex;align-items:center;justify-content:center;min-width:98px;border:1px solid #347955;border-radius:18px;padding:4px 10px;color:var(--green);font-size:12px;font-weight:900;letter-spacing:.02em}} .daily summary strong{{font-size:17px;letter-spacing:-.035em}} .daily summary::after{{content:'+';margin-left:auto;color:var(--muted);font-size:21px;line-height:18px}} .daily[open] summary{{border-bottom:1px solid var(--line)}} .daily[open] summary::after{{content:'−'}} .improvement{{padding:15px 20px 19px}} .detail-steps{{margin:0;padding:0;list-style:none;color:#e7e7e7;font-size:14px;line-height:1.62}} .detail-steps li{{display:flex;gap:12px;align-items:flex-start;padding:10px 11px;border-radius:8px;background:#252525}} .detail-steps li+li{{margin-top:7px}} .detail-steps li.problem{{background:#2b2722}} .detail-steps li.action{{background:#202c27}} .detail-steps li.result{{background:#20262c}} .step-label{{flex:0 0 64px;font-size:12px;font-weight:900;line-height:1.9}} .detail-steps li.problem .step-label{{color:#ffb06a}} .detail-steps li.action .step-label{{color:var(--green)}} .detail-steps li.result .step-label{{color:var(--blue)}}
 .tabbed-report{{padding-top:24px}} .tab{{padding:16px 12px 15px;font-size:19px;font-weight:900}} .tab-panel{{padding-top:26px}}
@@ -390,24 +638,87 @@ def make_html() -> None:
 .history-card ul{{font-size:15px;line-height:1.72}} .history-card li{{padding:10px 12px 10px 28px}} .history-card li+li{{margin-top:8px}} .history-card li::before{{left:11px}}
 .daily{{margin-top:14px}} .daily summary{{gap:15px;padding:19px 23px}} .daily summary span{{min-width:108px;padding:5px 11px;font-size:13px}} .daily summary strong{{font-size:20px}} .daily summary::after{{font-size:24px}} .improvement{{padding:18px 23px 22px}} .detail-steps{{font-size:15px;line-height:1.72}} .detail-steps li{{gap:14px;padding:12px 14px}} .detail-steps li+li{{margin-top:9px}} .step-label{{flex-basis:70px;font-size:13px;line-height:1.95}}
 .tab{{font-size:21px;letter-spacing:-.025em}} .issue-card h3,.history-card h3{{font-size:24px}} .issue-row p,.history-card ul{{font-size:17px;line-height:1.78}} .issue-row>span{{font-size:19px;line-height:1.8}} .issue-row{{grid-template-columns:94px minmax(0,1fr)}} .daily summary strong{{font-size:22px}} .detail-steps{{font-size:17px;line-height:1.78}} .detail-steps li{{padding:15px 18px}} .step-label{{flex:0 0 94px;font-size:19px;font-weight:900;line-height:1.8;letter-spacing:-.04em}}
-@media(max-width:760px){{.page{{padding:0 14px 36px}}.hero{{padding-bottom:18px;align-items:flex-start;gap:8px;flex-direction:column}}h1{{font-size:25px}}.hero p{{font-size:14px}}.calendar-head,.calendar-grid{{gap:5px}}.weekday{{font-size:12px}}.day{{min-height:82px;padding:8px 7px;border-radius:9px;gap:7px}}.date{{font-size:15px}}.event{{font-size:10px}}.event::before{{width:7px;height:7px;margin-right:4px}}.history,.issues{{grid-template-columns:1fr}}.issue-top{{flex-wrap:wrap}}.issue-dates{{margin-left:0;order:3;width:100%}}.tab{{padding:12px 5px;font-size:13px}}.daily summary{{padding:15px 16px;gap:9px}}.daily summary span{{min-width:90px;padding:4px 7px;font-size:11px}}.daily summary strong{{font-size:16px}}.detail-steps{{font-size:14px}}.detail-steps li{{padding:10px}}.calendar::after{{font-size:11px;line-height:1.8}}table{{font-size:12px}}th,td{{padding:8px}}}}
+@media(max-width:760px){{.page{{padding:0 14px 36px}}.hero{{padding-bottom:18px;align-items:flex-start;gap:8px;flex-direction:column}}h1{{font-size:25px}}.hero p{{font-size:14px}}.month-carousel{{display:block;min-height:0;overflow:visible}}.month-report.is-available{{display:none}}.month-report.active{{display:block;width:100%;min-width:0}}.month-report-head{{display:block;overflow:hidden}}.month-report-head strong{{display:block;font-size:24px}}.month-report-head small{{display:block;margin-top:5px;font-size:12px;white-space:normal}}.calendar{{width:100%;min-width:0}}.calendar-arrow-controls{{position:static;display:flex;justify-content:center;gap:10px;margin-top:14px;pointer-events:auto}}.month-arrow{{position:static;width:38px;height:38px;transform:none}}.month-arrow:hover:not(:disabled),.month-arrow:focus-visible,.month-arrow-up:hover:not(:disabled),.month-arrow-up:focus-visible,.month-arrow-down:hover:not(:disabled),.month-arrow-down:focus-visible{{transform:scale(1.06)}}.month-carousel.overview{{display:grid;grid-template-columns:1fr;gap:18px;padding-bottom:0}}.month-carousel.overview .month-report.is-available{{display:block;width:100%}}.month-carousel.overview .calendar-arrow-controls{{grid-column:1}}.month-carousel.overview .month-report-head strong{{font-size:22px}}.month-carousel.overview .month-report-head small{{font-size:11px}}.month-carousel.overview .weekday{{font-size:11px}}.month-carousel.overview .day{{min-height:76px;padding:6px 5px}}.month-carousel.overview .date{{font-size:14px}}.month-carousel.overview .event{{font-size:9px}}.month-scope{{overflow-x:auto;justify-content:flex-start;padding-bottom:4px}}.scope-button{{flex:0 0 auto}}.calendar-head,.calendar-grid{{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}}.weekday,.day{{width:auto;min-width:0}}.weekday{{font-size:12px}}.day{{min-height:82px;padding:8px 7px;border-radius:9px;gap:7px}}.date{{font-size:15px}}.event{{font-size:10px}}.event::before{{width:7px;height:7px;margin-right:4px}}.history,.issues{{grid-template-columns:1fr}}.issue-top{{flex-wrap:wrap}}.issue-dates{{margin-left:0;order:3;width:100%}}.tab{{padding:12px 5px;font-size:13px}}.daily summary{{padding:15px 16px;gap:9px}}.daily summary span{{min-width:90px;padding:4px 7px;font-size:11px}}.daily summary strong{{font-size:16px}}.detail-steps{{font-size:14px}}.detail-steps li{{padding:10px}}.calendar::after{{font-size:11px;line-height:1.8}}table{{font-size:12px}}th,td{{padding:8px}}}}
 </style>
 </head>
 <body><main class='page'>
-<header class='hero'><div class='eyebrow'>PROJECT WORK RECORD</div><h1>1st Monthly Report</h1><p>EV Charger Field Inspection · July 2026</p></header>
-<section class='panel'>{make_calendar_html()}</section>
+<header class='hero'><div class='eyebrow'>PROJECT WORK RECORD</div><h1>Monthly Work Report</h1><p>EV Charger Field Inspection · July–September 2026</p></header>
+<section class='panel'>{make_month_carousel_html()}</section>
+<nav class='month-scope' aria-label='하단 보고 내용 표시 범위'>
+  <button class='scope-button active is-available' type='button'
+      data-filter-month='all'>전체 누적</button>
+  <button class='scope-button' type='button'
+      data-filter-month='2026-07'>7월</button>
+  <button class='scope-button' type='button'
+      data-filter-month='2026-08'>8월</button>
+  <button class='scope-button' type='button'
+      data-filter-month='2026-09'>9월</button>
+</nav>
 <section class='panel tabbed-report'>
   <div class='tabs' role='tablist' aria-label='업무 기록 분류'>
     <button class='tab active' type='button' role='tab' aria-selected='true' data-target='issues'>기술 이슈·조치 리포트</button>
     <button class='tab' type='button' role='tab' aria-selected='false' data-target='history'>주요 개선 이력</button>
     <button class='tab' type='button' role='tab' aria-selected='false' data-target='daily'>날짜별 개선 내용</button>
   </div>
-  <div class='tab-panel active' id='issues' role='tabpanel'><p class='foot' style='margin-top:0;margin-bottom:16px'>6월 29일 필드 점검 프로젝트 시작 이후 발생한 주요 장비·물리 연결 이슈와 조치 내역입니다. 현재 6건 모두 해결되어 정상 측정 단계로 전환했습니다.</p>{make_issue_report_html()}</div>
-  <div class='tab-panel' id='history' role='tabpanel'>{make_change_history_html()}</div>
-  <div class='tab-panel' id='daily' role='tabpanel'>{sections}</div>
+  <div class='tab-panel active' id='issues' role='tabpanel'><p class='foot month-filter-item' data-months='2026-07' style='margin-top:0;margin-bottom:16px'>6월 29일 필드 점검 프로젝트 시작 이후 발생한 주요 장비·물리 연결 이슈와 조치 내역입니다. 현재 5건 모두 해결되어 정상 측정 단계로 전환했습니다.</p>{make_issue_report_html()}<p class='month-empty' data-empty-for='issues'>선택한 월에 등록된 기술 이슈가 없습니다.</p></div>
+  <div class='tab-panel' id='history' role='tabpanel'>{make_change_history_html()}<p class='month-empty' data-empty-for='history'>선택한 월에 등록된 주요 개선 이력이 없습니다.</p></div>
+  <div class='tab-panel' id='daily' role='tabpanel'>{sections}<p class='month-empty' data-empty-for='daily'>선택한 월에 등록된 날짜별 개선 내용이 없습니다.</p></div>
 </section>
 <p class='foot'>본 기록은 기존 통합 업무기록의 날짜별 상세 표를 그대로 옮기고, 핵심 업무 표를 월간 캘린더로 재구성한 버전입니다.</p>
 </main><script>
+const reportMonths = Array.from(
+  document.querySelectorAll('.month-report')
+);
+const monthScopeButtons = Array.from(
+  document.querySelectorAll('[data-filter-month]')
+);
+const monthArrowButtons = Array.from(
+  document.querySelectorAll('[data-month-step]')
+);
+const monthViewButtons = Array.from(
+  document.querySelectorAll('[data-calendar-view]')
+);
+const monthCarousel = document.querySelector('.month-carousel');
+const queryParams = new URLSearchParams(window.location.search);
+const previewMonth = queryParams.get('reportMonth');
+const previewThrough = queryParams.get('reportThrough');
+const now = new Date();
+const actualMonth = `${{now.getFullYear()}}-${{
+  String(now.getMonth() + 1).padStart(2, '0')
+}}`;
+const validPreview = reportMonths.some(
+  (report) => report.dataset.month === previewMonth
+);
+const validPreviewThrough = reportMonths.some(
+  (report) => report.dataset.month === previewThrough
+);
+const referenceMonth = validPreviewThrough
+  ? previewThrough
+  : (validPreview ? previewMonth : actualMonth);
+const availableReports = reportMonths.filter((report) => {{
+  const available = report.dataset.hasContent === 'true' ||
+    report.dataset.month <= referenceMonth;
+  report.classList.toggle('is-available', available);
+  const scopeButton = document.querySelector(
+    `[data-filter-month="${{report.dataset.month}}"]`
+  );
+  if (scopeButton) {{
+    scopeButton.classList.toggle('is-available', available);
+  }}
+  return available;
+}});
+document.querySelector('.month-carousel').dataset.count =
+  String(availableReports.length);
+let selectedMonth = (
+  validPreview
+    ? availableReports.find(
+        (report) => report.dataset.month === previewMonth
+      )
+    : availableReports[availableReports.length - 1]
+)?.dataset.month || reportMonths[0].dataset.month;
+let rememberedMonth = selectedMonth;
+let overviewMode = false;
+
 function activateTab(target) {{
   document.querySelectorAll('.tab').forEach((item) => {{
     const active = item.dataset.target === target;
@@ -419,8 +730,233 @@ function activateTab(target) {{
 document.querySelectorAll('.tab').forEach((tab) => {{
   tab.addEventListener('click', () => activateTab(tab.dataset.target));
 }});
+
+function updateMonthArrowState() {{
+  monthArrowButtons.forEach((button) => {{
+    button.disabled = availableReports.length < 2;
+  }});
+  monthViewButtons.forEach((button) => {{
+    button.disabled = availableReports.length < 2;
+  }});
+}}
+
+function positionMonthReports(month) {{
+  const active = availableReports.find(
+    (report) => report.dataset.month === month
+  ) || availableReports[0];
+  if (!active) return;
+  selectedMonth = active.dataset.month;
+  availableReports.forEach((report) => {{
+    report.classList.remove(
+      'active',
+      'side-left',
+      'side-right',
+      'side-left-near',
+      'side-left-far',
+      'side-right-near',
+      'side-right-far'
+    );
+    report.setAttribute(
+      'aria-current',
+      report === active ? 'true' : 'false'
+    );
+  }});
+  active.classList.add('active');
+  const previous = availableReports
+    .filter((report) => report.dataset.month < selectedMonth)
+    .sort((a, b) => b.dataset.month.localeCompare(a.dataset.month));
+  const next = availableReports
+    .filter((report) => report.dataset.month > selectedMonth)
+    .sort((a, b) => a.dataset.month.localeCompare(b.dataset.month));
+  previous.forEach((report, index) => {{
+    report.classList.add(
+      'side-left',
+      index === 0 ? 'side-left-near' : 'side-left-far'
+    );
+  }});
+  next.forEach((report, index) => {{
+    report.classList.add(
+      'side-right',
+      index === 0 ? 'side-right-near' : 'side-right-far'
+    );
+  }});
+  updateMonthArrowState();
+}}
+
+function updateIssueViews(scope) {{
+  document.querySelectorAll('.issue-card').forEach((card) => {{
+    const months = card.dataset.months.trim().split(/\s+/);
+    card.querySelectorAll('.issue-phase').forEach((phase) => {{
+      const hidden = scope !== 'all' &&
+        phase.dataset.phaseMonth !== scope;
+      phase.classList.toggle('filtered-out', hidden);
+    }});
+    const statusViews = Array.from(
+      card.querySelectorAll('.issue-status-view')
+    );
+    statusViews.forEach((view) => view.classList.add('filtered-out'));
+    const statusTarget = scope === 'all'
+      ? statusViews[statusViews.length - 1]
+      : statusViews.find(
+          (view) => view.dataset.statusMonth === scope
+        );
+    if (statusTarget) statusTarget.classList.remove('filtered-out');
+    const badge = card.querySelector('.carry-badge');
+    if (!badge) return;
+    if (scope === 'all') {{
+      badge.textContent = `${{months.length}}개월 연결`;
+      return;
+    }}
+    const index = months.indexOf(scope);
+    if (index === 0) {{
+      badge.textContent =
+        `${{Number(months[index + 1].slice(-2))}}월로 이월 →`;
+    }} else if (index === months.length - 1) {{
+      badge.textContent =
+        `← ${{Number(months[index - 1].slice(-2))}}월부터 계속`;
+    }} else {{
+      badge.textContent =
+        `← ${{Number(months[index - 1].slice(-2))}}월 · ` +
+        `${{Number(months[index + 1].slice(-2))}}월 →`;
+    }}
+  }});
+}}
+
+function updateEmptyStates() {{
+  const selectors = {{
+    issues: '.issue-card',
+    history: '.history-card',
+    daily: '.daily'
+  }};
+  Object.entries(selectors).forEach(([panelId, selector]) => {{
+    const panel = document.getElementById(panelId);
+    const hasVisible = Array.from(
+      panel.querySelectorAll(selector)
+    ).some((item) => !item.classList.contains('filtered-out'));
+    const empty = panel.querySelector(
+      `[data-empty-for="${{panelId}}"]`
+    );
+    if (empty) empty.classList.toggle('visible', !hasVisible);
+  }});
+}}
+
+function filterReportContent(scope) {{
+  monthScopeButtons.forEach((button) => {{
+    button.classList.toggle(
+      'active',
+      button.dataset.filterMonth === scope
+    );
+  }});
+  document.querySelectorAll('.month-filter-item').forEach((item) => {{
+    const months = item.dataset.months.trim().split(/\s+/);
+    const hidden = scope !== 'all' && !months.includes(scope);
+    item.classList.toggle('filtered-out', hidden);
+  }});
+  updateIssueViews(scope);
+  updateEmptyStates();
+}}
+
+function selectMonth(month) {{
+  overviewMode = false;
+  monthCarousel.classList.remove('overview');
+  positionMonthReports(month);
+  rememberedMonth = selectedMonth;
+  filterReportContent(selectedMonth);
+}}
+
+function enterMonthOverview() {{
+  if (availableReports.length < 2) return;
+  rememberedMonth = selectedMonth;
+  overviewMode = true;
+  monthCarousel.classList.add('overview');
+}}
+
+function exitMonthOverview() {{
+  if (!overviewMode) return;
+  selectMonth(rememberedMonth);
+}}
+
+function moveMonth(step) {{
+  const baseMonth = overviewMode ? rememberedMonth : selectedMonth;
+  const activeIndex = availableReports.findIndex(
+    (report) => report.dataset.month === baseMonth
+  );
+  if (activeIndex < 0 || availableReports.length === 0) return;
+  const targetIndex = (
+    activeIndex + step + availableReports.length
+  ) % availableReports.length;
+  selectMonth(availableReports[targetIndex].dataset.month);
+}}
+
+availableReports.forEach((report) => {{
+  report.addEventListener('click', (event) => {{
+    if (event.target.closest('[data-select-month]')) return;
+    if (!overviewMode &&
+        report.dataset.month === selectedMonth) return;
+    selectMonth(report.dataset.month);
+  }});
+}});
+
+document.querySelectorAll('[data-select-month]').forEach((button) => {{
+  button.addEventListener('click', () => {{
+    if (!overviewMode &&
+        button.dataset.selectMonth === selectedMonth) return;
+    selectMonth(button.dataset.selectMonth);
+  }});
+}});
+
+monthArrowButtons.forEach((button) => {{
+  button.addEventListener('click', () => {{
+    moveMonth(Number(button.dataset.monthStep));
+  }});
+}});
+
+monthViewButtons.forEach((button) => {{
+  button.addEventListener('click', () => {{
+    if (button.dataset.calendarView === 'overview') {{
+      enterMonthOverview();
+    }} else {{
+      exitMonthOverview();
+    }}
+  }});
+}});
+
+document.addEventListener('keydown', (event) => {{
+  if (event.defaultPrevented ||
+      event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.target instanceof Element &&
+      event.target.matches('input, textarea, select')) return;
+  if (event.key === 'ArrowLeft') {{
+    event.preventDefault();
+    moveMonth(-1);
+  }} else if (event.key === 'ArrowRight') {{
+    event.preventDefault();
+    moveMonth(1);
+  }} else if (event.key === 'ArrowUp') {{
+    event.preventDefault();
+    enterMonthOverview();
+  }} else if (event.key === 'ArrowDown') {{
+    event.preventDefault();
+    exitMonthOverview();
+  }}
+}});
+
+monthScopeButtons.forEach((button) => {{
+  button.addEventListener('click', () => {{
+    const scope = button.dataset.filterMonth;
+    if (scope === 'all') {{
+      filterReportContent('all');
+    }} else {{
+      selectMonth(scope);
+    }}
+  }});
+}});
+
 document.querySelectorAll('[data-scroll-target]').forEach((item) => {{
   item.addEventListener('click', () => {{
+    if (item.dataset.month) {{
+      selectMonth(item.dataset.month);
+    }}
     const target = document.getElementById(item.dataset.scrollTarget);
     if (!target) return;
     activateTab(item.dataset.tabTarget);
@@ -436,13 +972,25 @@ document.querySelectorAll('[data-scroll-target]').forEach((item) => {{
 }});
 document.querySelectorAll('.back-calendar').forEach((button) => {{
   button.addEventListener('click', () => {{
-    const calendar = document.querySelector('.calendar');
+    const calendar = document.querySelector(
+      `.month-report.active .calendar`
+    );
     if (!calendar) return;
     calendar.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
   }});
 }});
+selectMonth(selectedMonth);
+requestAnimationFrame(() => {{
+  document.querySelector('.month-carousel').classList.add('ready');
+}});
 </script></body></html>"""
-    HTML_OUT.write_text(html, encoding="utf-8")
+    clean_html = "\n".join(
+        line.rstrip() for line in html.splitlines()
+    ) + "\n"
+    with HTML_OUT.open(
+        "w", encoding="utf-8", newline="\n"
+    ) as stream:
+        stream.write(clean_html)
 
 
 if __name__ == "__main__":
