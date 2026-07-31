@@ -42,9 +42,11 @@ EVENTS_BY_MONTH = {
     22: [("월간 보고·To-do", "orange")],
     23: [("MapWebApp 5.0 개선 공유", "orange")],
     24: [("운전자 연결·촬영 연동", "green"), ("보고서 자동화 구상", "blue")],
-    28: [("운전자 촬영 연동 파일 확인", "green")],
+    28: [("운전자 촬영 연동 파일 확인", "green"),
+         ("계측터미널 전류 오류", "orange")],
     29: [("MapWebApp 6.0 상태 표시", "green"),
          ("업무기록·자동화 기준 갱신", "blue")],
+    30: [("CP 파형 X축 조정", "orange")],
     31: [("모바일 운전자 연결 개선", "green")],
     },
     (2026, 8): {},
@@ -66,6 +68,10 @@ EVENT_LINKS = {
         ("issues", "issue-04"),
     (2026, 7, 21, "측정 지그 방수"):
         ("issues", "issue-05"),
+    (2026, 7, 28, "계측터미널 전류 오류"):
+        ("issues", "issue-06"),
+    (2026, 7, 30, "CP 파형 X축 조정"):
+        ("issues", "issue-07"),
     (2026, 7, 22, "월간 보고·To-do"):
         ("history", "history"),
 }
@@ -415,6 +421,40 @@ def make_issue_report_html() -> str:
                  "워터 루프를 만들어 빗물 유입 경로를 차단.")
             ],
         },
+        {
+            "no": "06",
+            "issue_id": "ISSUE-2026-07-06",
+            "title": "파워 어낼라이저 전류값 이상",
+            "occurred": "07.28",
+            "acted": "07.28",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "7kW 완속충전기 계측 중 전류값이 약 2.3A로 "
+                 "표시되어, 220V 조건에서 예상되는 약 30A "
+                 "수준과 크게 불일치.",
+                 "측정 터미널 문제를 확인한 뒤 (구)계측터미널과 "
+                 "별도로 받은 (신)계측터미널을 연결해 각각 "
+                 "계측기에 연결하고 약 30A의 정상값을 확인.")
+            ],
+        },
+        {
+            "no": "07",
+            "issue_id": "ISSUE-2026-07-07",
+            "title": "CP 파형 X축 표시 범위 조정",
+            "occurred": "07.30",
+            "acted": "07.30",
+            "statuses": {"2026-07": "완료"},
+            "months": ["2026-07"],
+            "phases": [
+                ("2026-07",
+                 "PLC 통신 확인을 위한 CP 파형 측정에서 "
+                 "표시 범위를 조정해 파형을 다시 확인할 필요가 있었음.",
+                 "다른 측정 조건은 변경하지 않고 X축 표시 범위만 "
+                 "50ms에서 20ms로 조정한 뒤 파형을 다시 확인.")
+            ],
+        },
     ]
     cards = []
     for issue in issues:
@@ -540,11 +580,14 @@ DAILY_IMPROVEMENTS = [
         "조치: 운전자 연결·제원 사진 촬영 화면과 Google Apps Script 구성 파일 생성.",
         "결과: 운전자 연결·촬영 연동 및 보고서 자동화 관련 파일 생성 확인. 배포 주소·권한 설정·실제 통신 시험은 추가 확인 필요.",
     ]),
-    ("2026-07-28", "MapWebApp 6.0 운전자 촬영 연동 구성", [
+    ("2026-07-28", "MapWebApp 6.0 운전자 촬영 연동 구성 · 계측터미널 점검", [
         "문제: 계측자와 운전자가 충전소 번호를 말이나 메시지로 전달해 촬영 대상이 혼동되거나 잘못된 번호로 저장될 위험 존재.",
         "조치: 계측자 화면에서 연결 QR을 생성하고 운전자가 모바일로 같은 작업에 접속하도록 구성.",
         "조치: 지도에서 선택한 충전소 번호를 모바일 촬영 화면에 자동 전달하고 연결 지연 시 최신 번호를 다시 전달하도록 개선.",
         "결과: 계측자–운전자 간 촬영 대상 전달 흐름을 구성했으며, 당시 Apps Script 배포와 실제 모바일 업로드는 추가 확인 대상으로 기록.",
+        "문제: 7kW 완속충전기 계측 중 파워 어낼라이저 전류값이 약 2.3A로 표시되어, 220V 조건에서 예상되는 약 30A 수준과 크게 불일치.",
+        "조치: 측정 터미널 문제를 확인한 뒤 (구)계측터미널과 별도로 받은 (신)계측터미널을 연결해 각각 계측기에 연결.",
+        "결과: 변경한 계측 구성에서 약 30A의 정상 전류값을 실제 확인.",
     ]),
     ("2026-07-29", "MapWebApp 6.0 실시간 촬영·저장 확인", [
         "문제: 구형 서버 확인 결과가 실시간 연결 상태를 덮어쓰고, 모바일 촬영·저장 흐름의 현장 최종 확인이 필요했음.",
@@ -552,6 +595,11 @@ DAILY_IMPROVEMENTS = [
         "조치: 촬영 사진을 충전소 번호에 맞는 파일명으로 변환해 지역·충전소별 Google Drive 경로에 저장하고 재촬영 시 기존 사진을 자동 교체.",
         "조치: 실제 모바일 촬영 사진을 현장에서 실시간으로 업로드하고 저장 완료 여부를 바로 확인.",
         "결과: 번호 오기록·사진 오저장·중복 파일과 사후 정리 작업을 줄이는 현장 촬영·저장 흐름의 정상 동작을 최종 확인.",
+    ]),
+    ("2026-07-30", "CP 파형 X축 표시 범위 조정", [
+        "문제: PLC 통신 확인을 위한 CP 파형 측정에서 표시 범위를 조정해 파형을 다시 확인할 필요가 있었음.",
+        "조치: 다른 측정 조건은 변경하지 않고 X축 표시 범위만 50ms에서 20ms로 조정.",
+        "결과: 조정된 표시 범위에서 CP 파형을 다시 확인하고 공유를 마무리.",
     ]),
     ("2026-07-31", "MapWebApp 6.0 모바일 운전자 연결 접근성 개선", [
         "문제: 모바일 화면의 운전자 연결 기능이 기존 버튼 위치에 의존해 지도 조작 중 빠르게 접근하기 어려울 수 있었음.",
@@ -660,7 +708,7 @@ def make_html() -> None:
     <button class='tab' type='button' role='tab' aria-selected='false' data-target='history'>주요 개선 이력</button>
     <button class='tab' type='button' role='tab' aria-selected='false' data-target='daily'>날짜별 개선 내용</button>
   </div>
-  <div class='tab-panel active' id='issues' role='tabpanel'><p class='foot month-filter-item' data-months='2026-07' style='margin-top:0;margin-bottom:16px'>6월 29일 필드 점검 프로젝트 시작 이후 발생한 주요 장비·물리 연결 이슈와 조치 내역입니다. 현재 5건 모두 해결되어 정상 측정 단계로 전환했습니다.</p>{make_issue_report_html()}<p class='month-empty' data-empty-for='issues'>선택한 월에 등록된 기술 이슈가 없습니다.</p></div>
+  <div class='tab-panel active' id='issues' role='tabpanel'><p class='foot month-filter-item' data-months='2026-07' style='margin-top:0;margin-bottom:16px'>6월 29일 필드 점검 프로젝트 시작 이후 발생한 주요 장비·물리 연결 이슈와 조치 내역입니다. 현재 7건 모두 조치를 완료했습니다.</p>{make_issue_report_html()}<p class='month-empty' data-empty-for='issues'>선택한 월에 등록된 기술 이슈가 없습니다.</p></div>
   <div class='tab-panel' id='history' role='tabpanel'>{make_change_history_html()}<p class='month-empty' data-empty-for='history'>선택한 월에 등록된 주요 개선 이력이 없습니다.</p></div>
   <div class='tab-panel' id='daily' role='tabpanel'>{sections}<p class='month-empty' data-empty-for='daily'>선택한 월에 등록된 날짜별 개선 내용이 없습니다.</p></div>
 </section>
